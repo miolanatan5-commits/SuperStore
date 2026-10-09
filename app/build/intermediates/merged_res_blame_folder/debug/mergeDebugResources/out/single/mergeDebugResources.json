@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "com.example.superstore.app-debug-45:/xml_file_paths.xml.flat",
+        "source": "com.example.superstore.app-main-47:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.example.superstore.app-debug-45:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.example.superstore.app-main-47:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.example.superstore.app-debug-45:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.example.superstore.app-main-47:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.example.superstore.app-debug-45:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.example.superstore.app-main-47:/mipmap-anydpi-v26/ic_launcher.xml"
+    }
+]

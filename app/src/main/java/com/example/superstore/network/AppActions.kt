@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.example.superstore.data.DownloadAsset
+import com.example.superstore.data.sanitizeDownloadFileName
 import com.example.superstore.data.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,7 +32,7 @@ object AppActions {
         withContext(Dispatchers.IO) {
             try {
                 val dir = File(context.cacheDir, "downloads").apply { mkdirs() }
-                val file = File(dir, asset.fileName)
+                val file = File(dir, sanitizeDownloadFileName(asset.fileName))
                 downloadToFile(asset.downloadUrl, file)
 
                 val uri = FileProvider.getUriForFile(
@@ -58,10 +59,11 @@ object AppActions {
      * e na barra de notificações — igual baixar qualquer arquivo pelo navegador.
      */
     fun downloadWithSystemManager(context: Context, asset: DownloadAsset) {
+        val fileName = sanitizeDownloadFileName(asset.fileName)
         val request = android.app.DownloadManager.Request(Uri.parse(asset.downloadUrl))
-            .setTitle(asset.fileName)
+            .setTitle(fileName)
             .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, asset.fileName)
+            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
         manager.enqueue(request)
     }
