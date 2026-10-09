@@ -82,6 +82,19 @@ data class DownloadAsset(
     val platform: Platform
 )
 
+/**
+ * Reduz o nome de arquivo vindo de uma loja a um unico segmento de caminho.
+ *
+ * Esse nome vem de respostas remotas (ver network/StoreSearchClients.kt) e nao
+ * e confiavel. Sem esse ajuste, um nome contendo "/" ou ".." faz o download ser
+ * escrito fora de cache/downloads (o diretorio declarado em
+ * res/xml/file_paths.xml). Mantem o ultimo segmento e recusa "." e "..".
+ */
+fun sanitizeDownloadFileName(rawName: String): String {
+    val segment = rawName.substringAfterLast('/')
+    return if (segment.isBlank() || segment == "." || segment == "..") "download" else segment
+}
+
 /** Deduz a plataforma de um arquivo pela extensão do nome. */
 fun classifyPlatform(fileName: String): Platform {
     val lower = fileName.lowercase()
