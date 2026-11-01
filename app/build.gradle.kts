@@ -81,4 +81,5 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
     debugImplementation(libs.androidx.ui.tooling)
+    testImplementation(libs.junit)
 }

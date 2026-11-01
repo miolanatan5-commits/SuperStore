@@ -17,6 +17,23 @@ private val httpClient = OkHttpClient.Builder()
     .readTimeout(20, TimeUnit.SECONDS)
     .build()
 
+/**
+ * Resposta HTTP fora da faixa 2xx, com o código de status preservado para que cada
+ * chamador trate o que é esperado (ex.: 404 = repositório sem release, 403/429 =
+ * limite da API) em vez de mostrar a mensagem crua ao usuário.
+ */
+internal class HttpStatusException(val statusCode: Int, url: String) :
+    IllegalStateException(httpErrorMessage(statusCode, url))
+
+internal fun httpErrorMessage(statusCode: Int, url: String): String = when (statusCode) {
+    403, 429 ->
+        "Limite de requisições da API atingido ao consultar $url. " +
+            "Aguarde alguns minutos e tente de novo, ou escolha outra loja."
+    else -> "HTTP $statusCode ao consultar $url"
+}
+
+internal fun isMissingReleaseStatus(statusCode: Int): Boolean = statusCode == 404
+
 private fun get(url: String): String {
     val request = Request.Builder()
         .url(url)
@@ -24,10 +41,20 @@ private fun get(url: String): String {
         .build()
     httpClient.newCall(request).execute().use { response ->
         if (!response.isSuccessful) {
-            throw IllegalStateException("HTTP ${response.code} ao consultar $url")
+            throw HttpStatusException(response.code, url)
         }
         return response.body?.string() ?: throw IllegalStateException("Resposta vazia de $url")
     }
+}
+
+/**
+ * Igual a [get], mas devolve null quando a release não existe: a API do GitHub e a do
+ * Codeberg respondem 404 para um repositório sem release publicada, e isso não é erro.
+ */
+private fun getReleaseBody(url: String): String? = try {
+    get(url)
+} catch (e: HttpStatusException) {
+    if (isMissingReleaseStatus(e.statusCode)) null else throw e
 }
 
 private fun enc(query: String): String = URLEncoder.encode(query, "UTF-8")
@@ -90,7 +117,7 @@ object StoreSearch {
 
     private fun fetchGitHubReleaseAssets(repoPath: String): List<DownloadAsset> {
         val url = "https://api.github.com/repos/$repoPath/releases/latest"
-        val json = JSONObject(get(url))
+        val json = JSONObject(getReleaseBody(url) ?: return emptyList())
         val assets = json.optJSONArray("assets") ?: return emptyList()
         return (0 until assets.length()).map { i ->
             val asset = assets.getJSONObject(i)
@@ -163,7 +190,7 @@ object StoreSearch {
 
     private fun fetchCodebergReleaseAssets(repoPath: String): List<DownloadAsset> {
         val url = "https://codeberg.org/api/v1/repos/$repoPath/releases/latest"
-        val json = JSONObject(get(url))
+        val json = JSONObject(getReleaseBody(url) ?: return emptyList())
         val assets = json.optJSONArray("assets") ?: return emptyList()
         return (0 until assets.length()).map { i ->
             val asset = assets.getJSONObject(i)
