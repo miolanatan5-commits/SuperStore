@@ -187,16 +187,30 @@ object StoreSearch {
             val apkUrl = item.optJSONObject("file")?.optString("path", "")?.ifBlank { null }
             AppResult(
                 name = item.optString("name"),
-                description = item.optJSONObject("file")?.optString("path") ?: "",
+                // A busca da Aptoide não devolve descrição: deixe em branco em vez de repetir o caminho do APK.
+                description = "",
                 author = item.optJSONObject("developer")?.optString("name") ?: "",
                 iconUrl = item.optString("icon", "").ifBlank { null },
-                pageUrl = item.optJSONObject("urls")?.optString("w") ?: "",
+                pageUrl = aptoidePageUrl(item),
                 store = Store.APTOIDE,
                 directDownload = apkUrl?.let {
                     DownloadAsset(fileName = "${item.optString("name")}.apk", downloadUrl = it, platform = com.example.superstore.data.Platform.ANDROID)
                 }
             )
         }
+    }
+
+    /**
+     * A busca da Aptoide devolve `urls` vazio (o campo só vem preenchido no endpoint app/get),
+     * então a página web do app é derivada dos campos que a busca traz — uname, store.name e id —
+     * no mesmo formato de urls.w: https://<uname>.en.aptoide.com/?store_name=<store>&app_id=<id>.
+     */
+    private fun aptoidePageUrl(item: JSONObject): String {
+        val uname = item.optString("uname", "")
+        val appId = item.optString("id", "")
+        if (uname.isBlank() || appId.isBlank()) return ""
+        val storeName = item.optJSONObject("store")?.optString("name", "") ?: ""
+        return "https://$uname.en.aptoide.com/?store_name=$storeName&app_id=$appId"
     }
 
     // --- F-Droid / IzzyOnDroid --------------------------------------------
