@@ -88,28 +88,42 @@ fun SuperStoreScreen() {
     var showInAppBrowser by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // Contador de "geracao" da busca: incrementa a cada busca disparada. Uma resposta
+    // cuja geracao nao e mais a atual e descartada, entao a busca mais recente sempre
+    // vence em vez de deixar uma resposta antiga sobrescrever os resultados de uma
+    // consulta ou loja que nao esta mais selecionada.
+    var searchGeneration by remember { mutableStateOf(0) }
+
     fun runSearch() {
         if (query.isBlank()) return
+        val generation = ++searchGeneration
+        // Fixa loja, plataforma e termo no momento do disparo: a resposta e aplicada
+        // com o que a busca pediu, nao com o que estiver selecionado quando ela chega.
+        val store = selectedStore
+        val platform = selectedPlatform
+        val term = query.trim()
         errorMessage = null
         isLoading = true
         scope.launch {
             try {
-                val allResults = StoreSearch.search(selectedStore, query.trim())
+                val allResults = StoreSearch.search(store, term)
+                if (generation != searchGeneration) return@launch
                 // Lojas só-Android: já dá pra aplicar o filtro de plataforma na hora.
-                results = if (selectedStore.isAndroidOnly && selectedPlatform != PlatformFilter.ALL) {
-                    if (selectedPlatform == PlatformFilter.ANDROID) allResults else emptyList()
+                results = if (store.isAndroidOnly && platform != PlatformFilter.ALL) {
+                    if (platform == PlatformFilter.ANDROID) allResults else emptyList()
                 } else {
                     allResults
                 }
                 if (results.isEmpty()) {
-                    errorMessage = "Nenhum resultado encontrado em ${selectedStore.displayName}" +
-                        if (selectedPlatform != PlatformFilter.ALL) " para ${selectedPlatform.label}." else "."
+                    errorMessage = "Nenhum resultado encontrado em ${store.displayName}" +
+                        if (platform != PlatformFilter.ALL) " para ${platform.label}." else "."
                 }
             } catch (e: Exception) {
+                if (generation != searchGeneration) return@launch
                 results = emptyList()
-                errorMessage = e.message ?: "Erro ao buscar em ${selectedStore.displayName}."
+                errorMessage = e.message ?: "Erro ao buscar em ${store.displayName}."
             } finally {
-                isLoading = false
+                if (generation == searchGeneration) isLoading = false
             }
         }
     }
@@ -214,7 +228,7 @@ fun SuperStoreScreen() {
                         singleLine = true
                     )
                     Spacer(Modifier.size(8.dp))
-                    Button(onClick = { runSearch() }) {
+                    Button(onClick = { runSearch() }, enabled = !isLoading) {
                         Icon(Icons.Default.Search, contentDescription = "Buscar")
                     }
                 }
